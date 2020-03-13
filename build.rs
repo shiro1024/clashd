@@ -4,9 +4,9 @@ use std::process::Command;
 use winres;
 
 fn main() {
-    let yacd_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap())
-        .join("lib")
-        .join("yacd");
+    let lib_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join("lib");
+    let config_dir = lib_dir.join("config");
+    let yacd_dir = lib_dir.join("yacd");
     for path in &[
         "src",
         "package.json",
@@ -30,6 +30,19 @@ fn main() {
         assert!(Command::new("cmd")
             .args(&["/c", "npm", "run", "build"])
             .current_dir(yacd_dir)
+            .status()
+            .map(|status| status.success())
+            .unwrap_or(false));
+
+        assert!(Command::new("cmd")
+            .args(&["/c", "npm", "install"])
+            .current_dir(&config_dir)
+            .status()
+            .map(|status| status.success())
+            .unwrap_or(false));
+        assert!(Command::new("cmd")
+            .args(&["/c", "npm", "run", "generate"])
+            .current_dir(config_dir)
             .status()
             .map(|status| status.success())
             .unwrap_or(false));

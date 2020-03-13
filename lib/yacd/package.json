@@ -8,24 +8,9 @@
     "build": "cross-env NODE_ENV=production webpack -p --progress",
     "pretty": "prettier --single-quote --write 'src/**/*.{js,scss}'"
   },
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged",
-      "pre-push": "yarn lint"
-    }
-  },
-  "lint-staged": {
-    "*.{js,scss,css,md}": [
-      "prettier --single-quote --write"
-    ]
-  },
   "browserslist": [
-    "Edge >= 16"
+    "Edge > 16"
   ],
-  "keywords": [
-    "react"
-  ],
-  "author": "Haishan <haishanhan@gmail.com> (https://haishan.me)",
   "private": true,
   "license": "MIT",
   "dependencies": {
