@@ -1,0 +1,20 @@
+.placeHolder {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-background);
+  opacity: 0.1;
+}
+
+.connQty {
+  font-family: var(--font-normal);
+  font-size: 0.75em;
+  margin-left: 3px;
+  padding: 2px 7px;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  background-color: var(--bg-near-transparent);
+  border-radius: 30px;
+}

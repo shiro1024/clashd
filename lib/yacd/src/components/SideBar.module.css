@@ -1,0 +1,128 @@
+.root {
+  background: var(--color-bg-sidebar);
+  position: relative;
+}
+
+.logoLink {
+  display: block;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 25px 0 15px;
+  @media (max-width: 768px) {
+    display: none;
+  }
+  color: #2a477a;
+  transition: color 0.3s ease-in-out;
+
+  &:hover {
+    animation: pulse 0.3s ease-in-out 0s infinite alternate;
+  }
+
+  img {
+    width: 80px;
+    height: 80px;
+  }
+}
+
+@keyframes pulse {
+  0% {
+    color: #2a477a;
+  }
+  100% {
+    color: #1f52ac;
+  }
+}
+
+.rows {
+  @media (max-width: 768px) {
+    display: flex;
+    justify-content: space-between;
+    overflow: scroll;
+  }
+}
+
+/* a router link */
+.row {
+  color: var(--color-text);
+  text-decoration: none;
+
+  display: flex;
+  align-items: center;
+  padding: 6px 16px;
+  @media (--breakpoint-not-small) {
+    padding: 8px 20px;
+  }
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+  }
+
+  svg {
+    color: var(--color-icon);
+    width: 22px;
+    height: 22px;
+
+    @media (--breakpoint-not-small) {
+      width: 24px;
+      height: 24px;
+    }
+  }
+}
+
+.rowActive {
+  background: var(--color-sb-active-row-bg);
+
+  @media (max-width: 768px) {
+    background: none;
+    border-bottom: 2px solid #387cec;
+  }
+}
+
+.label {
+  padding-left: 14px;
+  font-size: 0.75em;
+  @media (max-width: 768px) {
+    padding-left: 0;
+    padding-top: 5px;
+  }
+
+  @media (--breakpoint-not-small) {
+    font-size: 1em;
+  }
+}
+
+.themeSwitchContainer {
+  --sz: 40px;
+
+  @media (max-width: 768px) {
+    display: none;
+  }
+
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: var(--sz);
+  height: var(--sz);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  color: var(--color-text);
+
+  padding: 5px;
+  appearance: none;
+  outline: none;
+  user-select: none;
+  background: none;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: 100%;
+  &:focus {
+    border-color: var(--color-focus-blue);
+  }
+}

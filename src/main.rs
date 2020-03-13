@@ -28,7 +28,7 @@ fn get_current_port() -> Option<u16> {
 }
 
 fn get_current_content() -> String {
-    flate!(static DIST_CONTENT: str from "src/dist.html");
+    flate!(static DIST_CONTENT: str from "lib/yacd/public/index.html");
     lazy_static! {
         static ref CONTENT: Arc<RwLock<String>> = Arc::new(RwLock::new(DIST_CONTENT.to_string()));
         static ref PORT: Arc<RwLock<u16>> = Arc::new(RwLock::new(7892));

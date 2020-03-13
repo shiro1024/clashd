@@ -1,0 +1,56 @@
+.proxy {
+  position: relative;
+  padding: 5px;
+  border-radius: 8px;
+  overflow: hidden;
+
+  max-width: 280px;
+  @media (--breakpoint-not-small) {
+    min-width: 200px;
+    border-radius: 10px;
+    padding: 10px;
+  }
+
+  background-color: var(--color-bg-proxy-selected);
+  &.now {
+    background-color: var(--color-focus-blue);
+    color: #ddd;
+  }
+  &.error {
+    opacity: 0.5;
+  }
+}
+
+.proxyType {
+  font-family: var(--font-mono);
+  font-size: 0.6em;
+  @media (--breakpoint-not-small) {
+    font-size: 1em;
+  }
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.proxyName {
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 5px;
+  font-size: 0.85em;
+  @media (--breakpoint-not-small) {
+    font-size: 1.1em;
+  }
+}
+
+.proxySmall {
+  .now {
+    outline: pink solid 1px;
+  }
+  width: 12px;
+  height: 12px;
+  border-radius: 8px;
+}
