@@ -4,12 +4,31 @@ use std::io::{Error, Read};
 pub use include_flate::*;
 pub use lazy_static::*;
 pub use log::{debug, error, info, warn, Level};
+use std::iter::once;
 pub use std::path::{Path, PathBuf};
+use std::ptr::null_mut;
 pub use std::sync::{Arc, RwLock};
 
+pub fn runas(process: &str, args: &str) -> bool {
+    use winapi::um::shellapi::ShellExecuteW;
+    use winapi::um::winuser::SW_SHOWNORMAL;
+    let runas: Vec<u16> = "runas".encode_utf16().chain(once(0)).collect();
+    let process: Vec<u16> = process.encode_utf16().chain(once(0)).collect();
+    let args: Vec<u16> = args.encode_utf16().chain(once(0)).collect();
+    (unsafe {
+        ShellExecuteW(
+            null_mut(),
+            runas.as_ptr(),
+            process.as_ptr(),
+            args.as_ptr(),
+            null_mut(),
+            SW_SHOWNORMAL,
+        )
+    } as usize)
+        > 32
+}
+
 pub fn msgbox(content: &str) {
-    use std::iter::once;
-    use std::ptr::null_mut;
     use winapi::um::winuser::{MessageBoxW, MB_ICONINFORMATION, MB_SYSTEMMODAL};
 
     let lp_text: Vec<u16> = content.encode_utf16().chain(once(0)).collect();

@@ -156,17 +156,15 @@ fn run_tray(mut process: Child) -> WindowResult {
 }
 
 fn main() -> WindowResult {
-    if !Command::new("checknetisolation")
-        .args(&[
+    if !runas(
+        "checknetisolation",
+        &[
             "LoopbackExempt",
             "-a",
             "-n=Microsoft.Win32WebViewHost_cw5n1h2txyewy",
-        ])
-        .stdout(Stdio::null())
-        .status()
-        .map(|status| status.success())
-        .unwrap_or(false)
-    {
+        ]
+        .join(" "),
+    ) {
         msgbox("Fail to disable loopback access restrictions");
     }
     match Command::new("clash")
