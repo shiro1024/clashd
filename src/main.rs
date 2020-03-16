@@ -5,7 +5,8 @@ mod utils;
 
 use std::env::current_dir;
 use std::process::{Child, Command, Stdio};
-use std::thread::spawn;
+use std::thread::{sleep, spawn};
+use std::time::Duration;
 use systray::Application;
 use utils::*;
 use web_view::{builder, Content, WVResult, WebView};
@@ -84,18 +85,26 @@ where
                     .user_data(state)
                     .invoke_handler(handler)
                     .build()
-                    .and_then(|mut webview| loop {
-                        if *thread_atomic.read().unwrap() {
-                            match webview.step() {
-                                Some(Ok(_)) => (),
-                                Some(e) => e?,
-                                None => {
-                                    *thread_atomic.write().unwrap() = false;
-                                    return Ok(webview.into_inner());
+                    .and_then(|mut webview| {
+                        let mut looped = 0;
+                        loop {
+                            if *thread_atomic.read().unwrap() {
+                                match webview.step() {
+                                    Some(Ok(_)) => (),
+                                    Some(e) => e?,
+                                    None => {
+                                        looped += 1;
+                                        if looped > 4 {
+                                            *thread_atomic.write().unwrap() = false;
+                                            return Ok(webview.into_inner());
+                                        } else {
+                                            sleep(Duration::from_millis(200));
+                                        }
+                                    }
                                 }
+                            } else {
+                                return Ok(webview.into_inner());
                             }
-                        } else {
-                            return Ok(webview.into_inner());
                         }
                     })
                 {
@@ -147,7 +156,7 @@ fn run_tray(mut process: Child) -> WindowResult {
 }
 
 fn main() -> WindowResult {
-    if Command::new("checknetisolation")
+    if !Command::new("checknetisolation")
         .args(&[
             "LoopbackExempt",
             "-a",
@@ -158,22 +167,20 @@ fn main() -> WindowResult {
         .map(|status| status.success())
         .unwrap_or(false)
     {
-        match Command::new("clash")
-            .args(&[
-                "-d",
-                current_dir()
-                    .unwrap_or(".".into())
-                    .to_string_lossy()
-                    .as_ref(),
-            ])
-            .spawn()
-        {
-            Ok(child) => run_tray(child)?,
-            Err(e) => msgbox(&format!("Fail to run clash: {}", e)),
-        }
-    } else {
         msgbox("Fail to disable loopback access restrictions");
     }
-
+    match Command::new("clash")
+        .args(&[
+            "-d",
+            current_dir()
+                .unwrap_or(".".into())
+                .to_string_lossy()
+                .as_ref(),
+        ])
+        .spawn()
+    {
+        Ok(child) => run_tray(child)?,
+        Err(e) => msgbox(&format!("Fail to run clash: {}", e)),
+    };
     Ok(())
 }
