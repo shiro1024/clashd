@@ -6,6 +6,7 @@ mod utils;
 use std::env::current_dir;
 use std::process::{Child, Command, Stdio};
 use std::thread::spawn;
+use systray::Application;
 use utils::*;
 use web_view::{builder, Content};
 
@@ -27,7 +28,12 @@ fn get_current_port() -> Option<u16> {
         })
 }
 
-fn get_current_content() -> String {
+fn get_config_content() -> String {
+    flate!(static CONTENT: str from "lib/config/dist/index.html");
+    CONTENT.clone()
+}
+
+fn get_dashboard_content() -> String {
     flate!(static DIST_CONTENT: str from "lib/yacd/public/index.html");
     lazy_static! {
         static ref CONTENT: Arc<RwLock<String>> = Arc::new(RwLock::new(DIST_CONTENT.to_string()));
@@ -46,20 +52,23 @@ fn get_current_content() -> String {
     CONTENT.read().unwrap().clone()
 }
 
-fn run_tray(mut process: Child) -> WindowResult {
-    let running_browser = Arc::new(RwLock::new(false));
-    let running_browser_inner = running_browser.clone();
-    let mut app = systray::Application::new()?;
-
-    app.set_icon_from_resource("icon")?;
-    app.add_menu_item("Open Dashboard", move |_| {
-        if !*running_browser_inner.read().unwrap() {
-            *running_browser_inner.write().unwrap() = true;
-            let running_browser_thread = running_browser_inner.clone();
+fn run_webview<C: 'static, T>(
+    atomic: Arc<RwLock<bool>>,
+    get_content: C,
+) -> impl FnMut(&mut Application) -> Result<(), systray::Error>
+where
+    C: Fn() -> Content<T> + Copy + Send,
+    T: AsRef<str>,
+{
+    move |_| {
+        if !*atomic.read().unwrap() {
+            *atomic.write().unwrap() = true;
+            let thread_atomic = atomic.clone();
+            let get_content = get_content;
             spawn(move || {
                 if let Err(e) = builder()
                     .title("Clash Dashboard")
-                    .content(Content::Html(get_current_content()))
+                    .content(get_content())
                     .size(960, 540)
                     .resizable(false)
                     .debug(true)
@@ -67,12 +76,12 @@ fn run_tray(mut process: Child) -> WindowResult {
                     .invoke_handler(|_webview, _arg| Ok(()))
                     .build()
                     .and_then(|mut webview| loop {
-                        if *running_browser_thread.read().unwrap() {
+                        if *thread_atomic.read().unwrap() {
                             match webview.step() {
                                 Some(Ok(_)) => (),
                                 Some(e) => e?,
                                 None => {
-                                    *running_browser_thread.write().unwrap() = false;
+                                    *thread_atomic.write().unwrap() = false;
                                     return Ok(webview.into_inner());
                                 }
                             }
@@ -86,9 +95,30 @@ fn run_tray(mut process: Child) -> WindowResult {
             });
         }
         Ok::<_, systray::Error>(())
-    })?;
+    }
+}
+
+fn run_tray(mut process: Child) -> WindowResult {
+    let running_config = Arc::new(RwLock::new(false));
+    let running_dashboard = Arc::new(RwLock::new(false));
+    let mut app = Application::new()?;
+
+    app.set_icon_from_resource("icon")?;
+    app.add_menu_item(
+        "Config",
+        run_webview(running_dashboard.clone(), || {
+            Content::Html(get_config_content())
+        }),
+    )?;
+    app.add_menu_item(
+        "Dashboard",
+        run_webview(running_config.clone(), || {
+            Content::Html(get_dashboard_content())
+        }),
+    )?;
     app.add_menu_item("Quit", move |window| {
-        *running_browser.write().unwrap() = false;
+        *running_config.write().unwrap() = false;
+        *running_dashboard.write().unwrap() = false;
         window.quit();
         if let Err(e) = process.kill() {
             msgbox(&format!("Fail to kill clash process: {}", e));
