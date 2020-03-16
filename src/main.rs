@@ -1,10 +1,10 @@
 // #![windows_subsystem = "windows"]
-#![feature(proc_macro_hygiene)]
+#![feature(proc_macro_hygiene, with_options)]
 
 mod utils;
 
 use std::env::current_dir;
-use std::process::{Child, Command, Stdio};
+use std::process::{Child, Command};
 use std::thread::{sleep, spawn};
 use std::time::Duration;
 use systray::Application;
@@ -13,16 +13,31 @@ use web_view::{builder, Content, WVResult, WebView};
 
 pub type WindowResult = Result<(), exitfailure::ExitFailure>;
 
-fn get_current_port() -> Option<u16> {
-    use serde_yaml::{from_slice, Value};
+lazy_static! {
+    static ref PORT: Arc<RwLock<u16>> = Arc::new(RwLock::new(7892));
+}
+
+fn get_current_port(write: bool) -> Option<u16> {
+    use serde_yaml::{from_slice, to_writer, Value};
     use std::collections::BTreeMap;
     use std::net::SocketAddr;
     read_full_file("config.yaml")
         .ok()
         .and_then(|s| from_slice::<BTreeMap<String, Value>>(&s).ok())
-        .and_then(|map| {
+        .and_then(|mut map| {
             if let Some(Value::String(addr)) = map.get("external-controller") {
                 addr.parse::<SocketAddr>().map(|ip| ip.port()).ok()
+            } else if write {
+                map.insert(
+                    "external-controller".to_string(),
+                    Value::String(format!("127.0.0.1:{}", PORT.read().unwrap())),
+                );
+                File::with_options()
+                    .write(true)
+                    .truncate(true)
+                    .open("config.yaml")
+                    .ok()
+                    .and_then(|file| to_writer(file, &map).map(|_| *PORT.read().unwrap()).ok())
             } else {
                 None
             }
@@ -38,9 +53,8 @@ fn get_dashboard_content() -> String {
     flate!(static DIST_CONTENT: str from "lib/yacd/public/index.html");
     lazy_static! {
         static ref CONTENT: Arc<RwLock<String>> = Arc::new(RwLock::new(DIST_CONTENT.to_string()));
-        static ref PORT: Arc<RwLock<u16>> = Arc::new(RwLock::new(7892));
     }
-    if let Some(port) = get_current_port() {
+    if let Some(port) = get_current_port(false) {
         if port != *PORT.read().unwrap() {
             let new_content = CONTENT.read().unwrap().replace(
                 &format!("\"{}\"", PORT.read().unwrap()),
@@ -186,18 +200,23 @@ fn main() -> WindowResult {
             msgbox("Fail to disable loopback access restrictions");
         }
     }
-    match Command::new("clash")
-        .args(&[
-            "-d",
-            current_dir()
-                .unwrap_or(".".into())
-                .to_string_lossy()
-                .as_ref(),
-        ])
-        .spawn()
-    {
-        Ok(child) => run_tray(child)?,
-        Err(e) => msgbox(&format!("Fail to run clash: {}", e)),
-    };
+    if get_current_port(true).is_some() {
+        match Command::new("clash")
+            .args(&[
+                "-d",
+                current_dir()
+                    .unwrap_or(".".into())
+                    .to_string_lossy()
+                    .as_ref(),
+            ])
+            .spawn()
+        {
+            Ok(child) => run_tray(child)?,
+            Err(e) => msgbox(&format!("Fail to run clash: {}", e)),
+        };
+    } else {
+        msgbox("Fail to set clash dashboard port");
+    }
+
     Ok(())
 }

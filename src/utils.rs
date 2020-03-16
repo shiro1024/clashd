@@ -1,9 +1,9 @@
-use std::fs::File;
 use std::io::{Error, Read};
 
 pub use include_flate::*;
 pub use lazy_static::*;
 pub use log::{debug, error, info, warn, Level};
+pub use std::fs::File;
 use std::iter::once;
 pub use std::path::{Path, PathBuf};
 use std::ptr::null_mut;
