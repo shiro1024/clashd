@@ -8,7 +8,7 @@ use std::process::{Child, Command, Stdio};
 use std::thread::spawn;
 use systray::Application;
 use utils::*;
-use web_view::{builder, Content};
+use web_view::{builder, Content, WVResult, WebView};
 
 pub type WindowResult = Result<(), exitfailure::ExitFailure>;
 
@@ -52,28 +52,37 @@ fn get_dashboard_content() -> String {
     CONTENT.read().unwrap().clone()
 }
 
-fn run_webview<C: 'static, T>(
+fn run_webview<'a, S, C, T, I, L>(
+    title: S,
     atomic: Arc<RwLock<bool>>,
     get_content: C,
+    handler: I,
+    state: L,
 ) -> impl FnMut(&mut Application) -> Result<(), systray::Error>
 where
-    C: Fn() -> Content<T> + Copy + Send,
+    S: AsRef<str>,
+    C: Fn() -> Content<T> + Copy + Send + 'static,
     T: AsRef<str>,
+    I: FnMut(&mut WebView<L>, &str) -> WVResult + Send + Copy + 'static,
+    L: Send + Copy + 'static,
 {
     move |_| {
+        let title = format!("Clash {}", title.as_ref());
         if !*atomic.read().unwrap() {
             *atomic.write().unwrap() = true;
+            let handler = handler;
+            let state = state;
             let thread_atomic = atomic.clone();
-            let get_content = get_content;
+            let title = title.clone();
             spawn(move || {
                 if let Err(e) = builder()
-                    .title("Clash Dashboard")
+                    .title(&title)
                     .content(get_content())
                     .size(960, 540)
                     .resizable(false)
                     .debug(true)
-                    .user_data(())
-                    .invoke_handler(|_webview, _arg| Ok(()))
+                    .user_data(state)
+                    .invoke_handler(handler)
                     .build()
                     .and_then(|mut webview| loop {
                         if *thread_atomic.read().unwrap() {
@@ -106,15 +115,23 @@ fn run_tray(mut process: Child) -> WindowResult {
     app.set_icon_from_resource("icon")?;
     app.add_menu_item(
         "Config",
-        run_webview(running_dashboard.clone(), || {
-            Content::Html(get_config_content())
-        }),
+        run_webview(
+            "Config",
+            running_dashboard.clone(),
+            || Content::Html(get_config_content()),
+            |_webview, _arg| Ok(()),
+            (),
+        ),
     )?;
     app.add_menu_item(
         "Dashboard",
-        run_webview(running_config.clone(), || {
-            Content::Html(get_dashboard_content())
-        }),
+        run_webview(
+            "Dashboard",
+            running_config.clone(),
+            || Content::Html(get_dashboard_content()),
+            |_webview, _arg| Ok(()),
+            (),
+        ),
     )?;
     app.add_menu_item("Quit", move |window| {
         *running_config.write().unwrap() = false;

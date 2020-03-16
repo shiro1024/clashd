@@ -1,12 +1,10 @@
 <template>
-	<div>
-		<section class="container">
-			<el-input v-model="rules_url">
-				<template slot="prepend">上次更新： {{ timeago }}</template>
-			</el-input>
-			<el-button type="primary" @click="onSubmit">立即创建</el-button>
-		</section>
-	</div>
+	<section class="container">
+		<el-input v-model="rules_url">
+			<template slot="prepend">上次更新： {{ timeago }}</template>
+		</el-input>
+		<el-button type="primary" @click="onSubmit">立即创建</el-button>
+	</section>
 </template>
 
 <script>
@@ -84,6 +82,7 @@ html {
 	justify-content: center;
 	align-items: center;
 	text-align: center;
+	max-width: 80vw;
 
 	& > div, & > button {
 		margin: 1em;

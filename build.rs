@@ -12,6 +12,15 @@ fn main() {
         "package.json",
         "package-lock.json",
         "babel.config.js",
+        "vue.config.js",
+    ] {
+        println!("cargo:rerun-if-changed={}", config_dir.join(path).display());
+    }
+    for path in &[
+        "src",
+        "package.json",
+        "package-lock.json",
+        "babel.config.js",
         "webpack.config.js",
     ] {
         println!("cargo:rerun-if-changed={}", yacd_dir.join(path).display());
@@ -41,7 +50,7 @@ fn main() {
             .map(|status| status.success())
             .unwrap_or(false));
         assert!(Command::new("cmd")
-            .args(&["/c", "npm", "run", "generate"])
+            .args(&["/c", "npm", "run", "build"])
             .current_dir(config_dir)
             .status()
             .map(|status| status.success())
