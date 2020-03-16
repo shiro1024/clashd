@@ -156,16 +156,35 @@ fn run_tray(mut process: Child) -> WindowResult {
 }
 
 fn main() -> WindowResult {
-    if !runas(
-        "checknetisolation",
-        &[
+    if Command::new("checknetisolation")
+        .args(&[
             "LoopbackExempt",
-            "-a",
+            "-s",
             "-n=Microsoft.Win32WebViewHost_cw5n1h2txyewy",
-        ]
-        .join(" "),
-    ) {
-        msgbox("Fail to disable loopback access restrictions");
+        ])
+        .output()
+        .map(|out| {
+            String::from_utf8(out.stdout)
+                .map(|out| {
+                    out.to_ascii_lowercase()
+                        .contains("microsoft.win32webviewhost_cw5n1h2txyewy")
+                })
+                .unwrap_or_default()
+        })
+        .unwrap_or_default()
+    {
+        msgbox("You must enable WebView loopback access to use the dashboard, there will be a request for administrator privileges later, please click Allow");
+        if !runas(
+            "checknetisolation",
+            &[
+                "LoopbackExempt",
+                "-a",
+                "-n=Microsoft.Win32WebViewHost_cw5n1h2txyewy",
+            ]
+            .join(" "),
+        ) {
+            msgbox("Fail to disable loopback access restrictions");
+        }
     }
     match Command::new("clash")
         .args(&[
