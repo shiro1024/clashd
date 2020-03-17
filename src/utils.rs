@@ -7,7 +7,7 @@ pub use std::fs::File;
 use std::iter::once;
 pub use std::path::{Path, PathBuf};
 use std::ptr::null_mut;
-pub use std::sync::{Arc, RwLock};
+pub use std::sync::{Arc, Mutex, RwLock};
 
 pub fn runas(process: &str, args: &str) -> bool {
     use winapi::um::shellapi::ShellExecuteW;

@@ -1,167 +1,43 @@
 // #![windows_subsystem = "windows"]
 #![feature(proc_macro_hygiene, with_options)]
 
+mod content;
+mod process;
 mod utils;
 
-use std::env::current_dir;
-use std::process::{Child, Command};
-use std::thread::{sleep, spawn};
-use std::time::Duration;
+use std::process::Command;
+
+use content::*;
+use process::*;
 use systray::Application;
 use utils::*;
-use web_view::{builder, Content, WVResult, WebView};
+use web_view::Content;
 
 pub type WindowResult = Result<(), exitfailure::ExitFailure>;
 
-lazy_static! {
-    static ref PORT: Arc<RwLock<u16>> = Arc::new(RwLock::new(7892));
-}
-
-fn get_current_port(write: bool) -> Option<u16> {
-    use serde_yaml::{from_slice, to_writer, Value};
-    use std::collections::BTreeMap;
-    use std::net::SocketAddr;
-    read_full_file("config.yaml")
-        .ok()
-        .and_then(|s| from_slice::<BTreeMap<String, Value>>(&s).ok())
-        .and_then(|mut map| {
-            if let Some(Value::String(addr)) = map.get("external-controller") {
-                addr.parse::<SocketAddr>().map(|ip| ip.port()).ok()
-            } else if write {
-                map.insert(
-                    "external-controller".to_string(),
-                    Value::String(format!("127.0.0.1:{}", PORT.read().unwrap())),
-                );
-                File::with_options()
-                    .write(true)
-                    .truncate(true)
-                    .open("config.yaml")
-                    .ok()
-                    .and_then(|file| to_writer(file, &map).map(|_| *PORT.read().unwrap()).ok())
-            } else {
-                None
-            }
-        })
-}
-
-fn get_config_content() -> String {
-    flate!(static CONTENT: str from "lib/config/dist/index.html");
-    CONTENT.clone()
-}
-
-fn get_dashboard_content() -> String {
-    flate!(static DIST_CONTENT: str from "lib/yacd/public/index.html");
-    lazy_static! {
-        static ref CONTENT: Arc<RwLock<String>> = Arc::new(RwLock::new(DIST_CONTENT.to_string()));
-    }
-    if let Some(port) = get_current_port(false) {
-        if port != *PORT.read().unwrap() {
-            let new_content = CONTENT.read().unwrap().replace(
-                &format!("\"{}\"", PORT.read().unwrap()),
-                &format!("\"{}\"", port),
-            );
-            *PORT.write().unwrap() = port;
-            *CONTENT.write().unwrap() = new_content;
-        }
-    }
-    CONTENT.read().unwrap().clone()
-}
-
-fn run_webview<'a, S, C, T, I, L>(
-    title: S,
-    atomic: Arc<RwLock<bool>>,
-    get_content: C,
-    handler: I,
-    state: L,
-) -> impl FnMut(&mut Application) -> Result<(), systray::Error>
-where
-    S: AsRef<str>,
-    C: Fn() -> Content<T> + Copy + Send + 'static,
-    T: AsRef<str>,
-    I: FnMut(&mut WebView<L>, &str) -> WVResult + Send + Copy + 'static,
-    L: Send + Copy + 'static,
-{
+fn subprocess_menu(
+    mode: &str,
+    flags: Arc<RwLock<Vec<ProcessDieFlag>>>,
+) -> impl FnMut(&mut Application) -> Result<(), systray::Error> + '_ {
     move |_| {
-        let title = format!("Clash {}", title.as_ref());
-        if !*atomic.read().unwrap() {
-            *atomic.write().unwrap() = true;
-            let handler = handler;
-            let state = state;
-            let thread_atomic = atomic.clone();
-            let title = title.clone();
-            spawn(move || {
-                if let Err(e) = builder()
-                    .title(&title)
-                    .content(get_content())
-                    .size(960, 540)
-                    .resizable(false)
-                    .debug(true)
-                    .user_data(state)
-                    .invoke_handler(handler)
-                    .build()
-                    .and_then(|mut webview| {
-                        let mut looped = 0;
-                        loop {
-                            if *thread_atomic.read().unwrap() {
-                                match webview.step() {
-                                    Some(Ok(_)) => (),
-                                    Some(e) => e?,
-                                    None => {
-                                        looped += 1;
-                                        if looped > 4 {
-                                            *thread_atomic.write().unwrap() = false;
-                                            return Ok(webview.into_inner());
-                                        } else {
-                                            sleep(Duration::from_millis(200));
-                                        }
-                                    }
-                                }
-                            } else {
-                                return Ok(webview.into_inner());
-                            }
-                        }
-                    })
-                {
-                    msgbox(&format!("Fail to init webview: {}", e));
-                }
-            });
+        if let Err(e) = start_subprocess(mode).map(|flag| flags.write().unwrap().push(flag)) {
+            msgbox(&format!("Fail to init dashboard: {}", e));
         }
         Ok::<_, systray::Error>(())
     }
 }
 
-fn run_tray(mut process: Child) -> WindowResult {
-    let running_config = Arc::new(RwLock::new(false));
-    let running_dashboard = Arc::new(RwLock::new(false));
+fn run_tray(process: ProcessDieFlag) -> WindowResult {
+    let flags = Arc::new(RwLock::new(vec![process]));
     let mut app = Application::new()?;
 
     app.set_icon_from_resource("icon")?;
-    app.add_menu_item(
-        "Config",
-        run_webview(
-            "Config",
-            running_dashboard.clone(),
-            || Content::Html(get_config_content()),
-            |_webview, _arg| Ok(()),
-            (),
-        ),
-    )?;
-    app.add_menu_item(
-        "Dashboard",
-        run_webview(
-            "Dashboard",
-            running_config.clone(),
-            || Content::Html(get_dashboard_content()),
-            |_webview, _arg| Ok(()),
-            (),
-        ),
-    )?;
+    app.add_menu_item("Config", subprocess_menu("c", flags.clone()))?;
+    app.add_menu_item("Dashboard", subprocess_menu("d", flags.clone()))?;
     app.add_menu_item("Quit", move |window| {
-        *running_config.write().unwrap() = false;
-        *running_dashboard.write().unwrap() = false;
         window.quit();
-        if let Err(e) = process.kill() {
-            msgbox(&format!("Fail to kill clash process: {}", e));
+        for process in flags.write().unwrap().iter() {
+            *process.write().unwrap() = false;
         }
         Ok::<_, systray::Error>(())
     })?;
@@ -170,52 +46,59 @@ fn run_tray(mut process: Child) -> WindowResult {
 }
 
 fn main() -> WindowResult {
-    if Command::new("checknetisolation")
-        .args(&[
-            "LoopbackExempt",
-            "-s",
-            "-n=Microsoft.Win32WebViewHost_cw5n1h2txyewy",
-        ])
-        .output()
-        .map(|out| {
-            String::from_utf8(out.stdout)
+    match std::env::args().take(2).last().as_deref() {
+        Some("c") => start_webview(
+            "Config",
+            || Content::Html(get_config_content()),
+            |_webview, _arg| Ok(()),
+            (),
+        ),
+        Some("d") => start_webview(
+            "Dashboard",
+            || Content::Html(get_dashboard_content()),
+            |_webview, _arg| Ok(()),
+            (),
+        ),
+        _ => {
+            if Command::new("checknetisolation")
+                .args(&[
+                    "LoopbackExempt",
+                    "-s",
+                    "-n=Microsoft.Win32WebViewHost_cw5n1h2txyewy",
+                ])
+                .output()
                 .map(|out| {
-                    out.to_ascii_lowercase()
-                        .contains("microsoft.win32webviewhost_cw5n1h2txyewy")
+                    String::from_utf8(out.stdout)
+                        .map(|out| {
+                            out.to_ascii_lowercase()
+                                .contains("microsoft.win32webviewhost_cw5n1h2txyewy")
+                        })
+                        .unwrap_or_default()
                 })
                 .unwrap_or_default()
-        })
-        .unwrap_or_default()
-    {
-        msgbox("You must enable WebView loopback access to use the dashboard, there will be a request for administrator privileges later, please click Allow");
-        if !runas(
-            "checknetisolation",
-            &[
-                "LoopbackExempt",
-                "-a",
-                "-n=Microsoft.Win32WebViewHost_cw5n1h2txyewy",
-            ]
-            .join(" "),
-        ) {
-            msgbox("Fail to disable loopback access restrictions");
+            {
+                msgbox("You must enable WebView loopback access to use the dashboard, there will be a request for administrator privileges later, please click Allow");
+                if !runas(
+                    "checknetisolation",
+                    &[
+                        "LoopbackExempt",
+                        "-a",
+                        "-n=Microsoft.Win32WebViewHost_cw5n1h2txyewy",
+                    ]
+                    .join(" "),
+                ) {
+                    msgbox("Fail to disable loopback access restrictions");
+                }
+            }
+            if get_current_port(true).is_some() {
+                match start_clash() {
+                    Ok(child) => run_tray(child)?,
+                    Err(e) => msgbox(&format!("Fail to run clash: {}", e)),
+                };
+            } else {
+                msgbox("Fail to set clash dashboard port");
+            }
         }
-    }
-    if get_current_port(true).is_some() {
-        match Command::new("clash")
-            .args(&[
-                "-d",
-                current_dir()
-                    .unwrap_or(".".into())
-                    .to_string_lossy()
-                    .as_ref(),
-            ])
-            .spawn()
-        {
-            Ok(child) => run_tray(child)?,
-            Err(e) => msgbox(&format!("Fail to run clash: {}", e)),
-        };
-    } else {
-        msgbox("Fail to set clash dashboard port");
     }
 
     Ok(())
