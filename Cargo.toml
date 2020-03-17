@@ -14,7 +14,7 @@ serde_yaml = "0.8.11"
 systray = "0.4.0"
 
 [dependencies.web-view]
-version ="0.6.1"
+version ="0.6.2"
 features = ["edge"]
 
 [dependencies.winapi]
@@ -25,6 +25,7 @@ features = ["winbase"]
 winres = "0.1.11"
 
 [profile.release]
+opt-level = 'z'
 lto = true
 panic = "abort"
 codegen-units = 1

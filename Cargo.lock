@@ -568,6 +568,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "javascriptcore-rs-sys"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3f46ada8a08dcd75a10afae872fbfb51275df4a8ae0d46b8cc7c708f08dd2998"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -833,6 +842,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c111b5bd5695e56cffe5129854aa230b39c93a305372fdbb2668ca2394eea9f8"
 
 [[package]]
+name = "soup-sys"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "48a2f246b51c81d4baa1ce611240c2f6e0323ae75f3b6cc9d2d2911e0567962c"
+dependencies = [
+ "bitflags",
+ "gio-sys",
+ "glib-sys",
+ "gobject-sys",
+ "libc",
+ "pkg-config",
+]
+
+[[package]]
 name = "strsim"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -920,6 +943,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "tinyfiledialogs"
+version = "3.3.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "848eb50d6d21430349d82418c2244f611b1ad3e1c52c675320338b3102d06554"
+dependencies = [
+ "cc",
+ "libc",
+]
+
+[[package]]
 name = "toml"
 version = "0.5.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -966,24 +999,54 @@ checksum = "914b1a6776c4c929a602fafd8bc742e06365d4bcbe48c30f9cca5824f70dc9dd"
 
 [[package]]
 name = "web-view"
-version = "0.6.1"
+version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c8883c45dbb83b50cd86c9715560c0ebd3f97b1cd8483e893af399058828773"
+checksum = "b3c54d252c61eebfe01950ff8cc09586b3d37a311ab81a996e0b8a11b5dd16e7"
 dependencies = [
  "boxfnonce",
+ "tinyfiledialogs",
  "urlencoding",
  "webview-sys",
 ]
 
 [[package]]
-name = "webview-sys"
-version = "0.4.1"
+name = "webkit2gtk-sys"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4db7bc5b01d1717ad842957733a4db019289ca141b79c71683da68874f099546"
+checksum = "f438a797e617deaa635e482f0beb29abb3bbe1540709cc20a572cac499b2f980"
 dependencies = [
+ "atk-sys",
  "bitflags",
- "cc",
+ "cairo-sys-rs",
+ "gdk-pixbuf-sys",
+ "gdk-sys",
+ "gio-sys",
+ "glib-sys",
+ "gobject-sys",
+ "gtk-sys",
+ "javascriptcore-rs-sys",
+ "libc",
+ "pango-sys",
  "pkg-config",
+ "soup-sys",
+]
+
+[[package]]
+name = "webview-sys"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ebd4dcacd0996a4ba60f7d661408172f9ba2e0176b0841876993df368bfa97cb"
+dependencies = [
+ "cc",
+ "gdk-sys",
+ "gio-sys",
+ "glib-sys",
+ "gobject-sys",
+ "gtk-sys",
+ "javascriptcore-rs-sys",
+ "libc",
+ "pkg-config",
+ "webkit2gtk-sys",
 ]
 
 [[package]]
