@@ -8,8 +8,14 @@ use web_view::{builder, Content, WVResult, WebView};
 
 pub type ProcessDieFlag = Arc<RwLock<bool>>;
 
-pub fn start_webview<'a, S, C, T, I, L>(title: S, get_content: C, handler: I, state: L)
-where
+pub fn start_webview<'a, S, C, T, I, L>(
+    title: S,
+    w: i32,
+    h: i32,
+    get_content: C,
+    handler: I,
+    state: L,
+) where
     S: AsRef<str>,
     C: Fn() -> Content<T> + Copy + Send + 'static,
     T: AsRef<str>,
@@ -21,7 +27,7 @@ where
     if let Err(e) = builder()
         .title(&title)
         .content(get_content())
-        .size(960, 540)
+        .size(w, h)
         .resizable(false)
         .debug(true)
         .user_data(state)

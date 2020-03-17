@@ -54,12 +54,16 @@ fn main() -> WindowResult {
     match std::env::args().take(2).last().as_deref() {
         Some("c") => start_webview(
             "Config",
+            720,
+            180,
             || Content::Html(get_config_content()),
             |_webview, _arg| Ok(()),
             (),
         ),
         Some("d") => start_webview(
             "Dashboard",
+            1280,
+            720,
             || Content::Html(get_dashboard_content()),
             |_webview, _arg| Ok(()),
             (),
