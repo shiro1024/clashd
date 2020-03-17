@@ -17,7 +17,7 @@ fn main() {
         println!("cargo:rerun-if-changed={}", config_dir.join(path).display());
     }
     for path in &[
-        "src",
+        "src/App.Vue",
         "package.json",
         "package-lock.json",
         "babel.config.js",

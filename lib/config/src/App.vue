@@ -1,9 +1,9 @@
 <template>
 	<section class="container">
-		<el-input v-model="rules_url">
-			<template slot="prepend">上次更新： {{ timeago }}</template>
+		<el-input v-model="rules_url" placeholder="请输入远程配置链接">
+			<template slot="prepend">{{ timeago }}更新</template>
 		</el-input>
-		<el-button type="primary" @click="onSubmit">立即创建</el-button>
+		<el-button type="primary" @click="onSubmit">保存</el-button>
 	</section>
 </template>
 

@@ -1,10 +1,12 @@
 use crate::utils::*;
 use std::env::{current_dir, current_exe};
 use std::io::{Error, Result};
-use std::process::{Child, Command};
+use std::os::windows::process::CommandExt;
+use std::process::{Child, Command, Stdio};
 use std::thread::{sleep, spawn};
 use std::time::Duration;
 use web_view::{builder, Content, WVResult, WebView};
+use winapi::um::winbase::CREATE_NO_WINDOW;
 
 pub type ProcessDieFlag = Arc<RwLock<bool>>;
 
@@ -53,6 +55,10 @@ pub fn start_clash() -> Result<ProcessDieFlag> {
                     .to_string_lossy()
                     .as_ref(),
             ])
+            .creation_flags(CREATE_NO_WINDOW)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
             .spawn()?,
     )
 }

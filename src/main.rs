@@ -1,4 +1,4 @@
-// #![windows_subsystem = "windows"]
+#![windows_subsystem = "windows"]
 #![feature(proc_macro_hygiene, with_options)]
 
 mod content;
