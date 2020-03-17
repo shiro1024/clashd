@@ -51,10 +51,19 @@ pub fn start_clash() -> Result<ProcessDieFlag> {
     )
 }
 
+lazy_static! {
+    static ref MANAGED_COUNT: Arc<RwLock<u16>> = Arc::default();
+}
+
+pub fn managed_count() -> u16 {
+    *MANAGED_COUNT.read().unwrap()
+}
+
 pub fn manage_process(process: Child) -> Result<ProcessDieFlag> {
     let process = Arc::new(Mutex::new(process));
     let can_kill = Arc::new(RwLock::new(false));
     let can_kill_ret = can_kill.clone();
+    *MANAGED_COUNT.write().unwrap() += 1;
     spawn(move || {
         loop {
             if *can_kill.read().unwrap() {
@@ -67,6 +76,7 @@ pub fn manage_process(process: Child) -> Result<ProcessDieFlag> {
                 }
             }
         }
+        *MANAGED_COUNT.write().unwrap() -= 1;
         return Ok::<_, Error>(());
     });
     Ok(can_kill_ret)

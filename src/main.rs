@@ -37,7 +37,12 @@ fn run_tray(process: ProcessDieFlag) -> WindowResult {
     app.add_menu_item("Quit", move |window| {
         window.quit();
         for process in flags.write().unwrap().iter() {
-            *process.write().unwrap() = false;
+            *process.write().unwrap() = true;
+        }
+        while managed_count() > 0 {
+            use std::thread::sleep;
+            use std::time::Duration;
+            sleep(Duration::from_millis(200));
         }
         Ok::<_, systray::Error>(())
     })?;
